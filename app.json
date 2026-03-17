@@ -3,7 +3,7 @@
     "name": "MyRace",
     "slug": "MyRace",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "landscape",
     "icon": "./assets/images/icon.png",
     "scheme": "myrace",
     "userInterfaceStyle": "automatic",
