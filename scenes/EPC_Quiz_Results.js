@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'r
 export default function EPC_Quiz_Results({ route, navigation }) {
   const { height } = useWindowDimensions();
   const styles = stylesFunc(height);
-  const { settings, inaccuracy, time, correct, mistake, count } = route.params;
+  const { settings, inaccuracy, time, correct, mistake, count, mode } = route.params;
   console.log(useWindowDimensions());
   return (
     <View style={styles.container}>
@@ -26,15 +26,7 @@ export default function EPC_Quiz_Results({ route, navigation }) {
             <Text style={styles.rightStatsText}>{time}</Text>
             </View>
       </View>
-      <View style={styles.statsContainer}>
-            <View style={styles.leftStatsContainer}>
-            <Text style={styles.leftStatsText}>Inaccuracy: </Text>
-            </View>
-            <View style={styles.rightStatsContainer}>
-            <Text style={styles.rightStatsText}>{inaccuracy}</Text>
-            </View>
-      </View>
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EPC_Quiz', { settings })}>
+      <TouchableOpacity style={styles.button} onPress={() => mode === "EPC" ? navigation.navigate('EPC_Quiz', { settings }) : navigation.navigate('Benjamin_Quiz', { settings })}>
         <Text style={styles.buttonText}>
           { "Restart" }
         </Text>

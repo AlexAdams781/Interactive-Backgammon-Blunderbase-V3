@@ -14,7 +14,7 @@ export default function Quiz({ navigation }) {
           { "EPC" }
         </Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EPC_Quiz_Settings')}>
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Benjamin_Quiz_Settings')}>
         <Text style={styles.buttonText}>
           { "Benjamin Count" }
         </Text>

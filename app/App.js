@@ -1,12 +1,16 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import Benjamin_Quiz from "../scenes/Benjamin_Quiz";
+import Benjamin_Quiz_Settings from "../scenes/Benjamin_Quiz_Settings";
 import Customize from "../scenes/Customize";
 import EPC_Quiz from "../scenes/EPC_Quiz";
 import EPC_Quiz_Results from "../scenes/EPC_Quiz_Results";
 import EPC_Quiz_Settings from "../scenes/EPC_Quiz_Settings";
 import Home from "../scenes/Home";
 import Learn from "../scenes/Learn";
+import One_Player from "../scenes/One_Player";
 import Quiz from "../scenes/Quiz";
 import SetupPosition from "../scenes/SetupPosition";
+import Two_Players from "../scenes/Two_Players";
 
 
 const Stack = createNativeStackNavigator();
@@ -23,6 +27,16 @@ export default function App() {
         <Stack.Screen
           name="SetupPosition"
           component={SetupPosition}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="One_Player"
+          component={One_Player}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Two_Players"
+          component={Two_Players}
           options={{ headerShown: false }}
         />
         <Stack.Screen
@@ -46,8 +60,18 @@ export default function App() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="Benjamin_Quiz"
+          component={Benjamin_Quiz}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="EPC_Quiz_Settings"
           component={EPC_Quiz_Settings}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Benjamin_Quiz_Settings"
+          component={Benjamin_Quiz_Settings}
           options={{ headerShown: false }}
         />
         <Stack.Screen

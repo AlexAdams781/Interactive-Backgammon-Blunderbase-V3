@@ -5,9 +5,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import positions from '../assets/epc_positions.json';
 import BackgammonBoard from "../views/BackgammonBoard";
-import Keypad from "../views/Keypad";
 
-export default function EPC_Quiz({ route, navigation }) {
+export default function Benjamin_Quiz({ route, navigation }) {
   const [checkersA, setCheckersA] = useState(
       [0, 0, 0, 0, 0, 0,
        0, 0, 0, 0, 0, 0,
@@ -16,7 +15,7 @@ export default function EPC_Quiz({ route, navigation }) {
       ]
     );
   const [checkersB, setCheckersB] = useState(
-      [-1, 0, 0, 0, 0, 0,
+      [0, 0, 0, 0, 0, 0,
        0, 0, 0, 0, 0, 0,
        0, 0, 0, 0, 0, 0,
        0, 0, 0, 0, 0, 0
@@ -35,6 +34,13 @@ export default function EPC_Quiz({ route, navigation }) {
   { value: "", color: "white" },
   { value: "", color: "green" },
   ]);
+
+  // Quantify Variance
+  const varianceScoreMap = new Map();
+  varianceScoreMap.set("rollish", 0);
+  varianceScoreMap.set("low", 1);
+  varianceScoreMap.set("medium", 2);
+  varianceScoreMap.set("high", 3);
 
   const updateStatValue = (index, newValue, newColor) => {
   setQuizStats(prevStats => {
@@ -55,8 +61,8 @@ export default function EPC_Quiz({ route, navigation }) {
 
   const { settings } = route.params;
   const numPositions = 10;
-  const [quizArray, setQuizArray] = useState(new Array(numPositions).fill(0));
-  const [answerArray, setAnswerArray] = useState(new Array(numPositions).fill(0));
+  const [quizArray, setQuizArray] = useState([new Array(numPositions).fill(0), new Array(numPositions).fill(0), new Array(numPositions).fill(0)]); // 2D array to store the quiz positions for top and bottom
+  const [answerArray, setAnswerArray] = useState(new Array(numPositions).fill(""));
 
   const checkSettings = (descr) => {
     if (descr === "MCG") return settings.isMCG || settings.isFastimate || settings.isAll;
@@ -70,13 +76,17 @@ export default function EPC_Quiz({ route, navigation }) {
   const { width, height } = useWindowDimensions();
   const styles = stylesFunc(height, width);
 
-  const [value, setValue] = useState("");
-  const [randomEntry, setRandomEntry] = useState(null);
+  const [isDouble, setIsDouble] = useState(false);
+  const [myDecision, setMyDecision] = useState("");
+  const [randomTopEntry, setRandomTopEntry] = useState(null);
+  const [randomBottomEntry, setRandomBottomEntry] = useState(null);
   const [seconds, setSeconds] = useState(0);
   const [positionCount, setPositionCount] = useState(1);
+  const [trueDecision, setTrueDecision] = useState("");
 
   const [inaccuracyCount, setInaccuracyCount] = useState(0.0);
-  const [method, setMethod] = useState("");
+  const [topMethod, setTopMethod] = useState("");
+  const [bottomMethod, setBottomMethod] = useState("");
   const [estimate, setEstimate] = useState(0.0);
 
   const [isPaused, setIsPaused] = useState(false);
@@ -86,13 +96,14 @@ export default function EPC_Quiz({ route, navigation }) {
   useEffect(() => {
     selectRandomEntry();
   }, []);
-
+/*
   useEffect(() => {
     console.log("Value changed to", value);
     const updatedAnswerArray = [...answerArray];
     updatedAnswerArray[positionCount - 1] = value;
     setAnswerArray(updatedAnswerArray);
-  }, [value]);
+    console.log("Updated answer array", updatedAnswerArray);
+  }, [value]); */
 
   useEffect(() => {
     console.log("tic");
@@ -118,12 +129,60 @@ export default function EPC_Quiz({ route, navigation }) {
         updateStatValue(i, "", "orange");
       }
 
-      // 2. Optional: Return a cleanup function if needed when leaving
+      // Return a cleanup function if needed when leaving
       return () => {
         console.log('Screen blurred/left');
       };
     }, []) // Dependency array for the callback
   );
+
+  const getTakePoint = (EPC, varianceVal) => {
+    if (EPC === "N/A" || varianceVal === "N/A") {
+      return "N/A";
+    }
+    return EPC + 0.5 * varianceVal;
+  };
+
+  const isCloseRace = (entryBottom, entryTop) => {
+    // Implementation for checking if two entries are close in race
+    console.log("Comparing entries", entryBottom, entryTop);
+    const estimateBottom = parseFloat(entryBottom.BESTIMATE);
+    const estimateTop = parseFloat(entryTop.BESTIMATE);
+    const varianceVal = varianceScoreMap.get(entryBottom.VARIANCE) + varianceScoreMap.get(entryTop.VARIANCE) - 3;
+    const takePoint = getTakePoint(entryBottom.BESTIMATE, varianceVal);
+    if (estimateBottom - 5 >= takePoint) {
+      return "No";
+    } else if (estimateTop >= takePoint) {
+      return "D/P";
+    } else if (estimateTop + 2.25 >= estimateBottom) {
+      return "ReD/T";
+    } else if (estimateTop + 3 >= estimateBottom) {
+      return "D/T";
+    } else if (estimateTop + 8 >= estimateBottom) {
+      return "ND";
+    } else {
+      return "No";
+    };
+  };
+
+  const handleButton1Press = () => {
+    if (!isDouble) {
+      setIsDouble(true);
+    } else {
+      setMyDecision("D/T");
+      selectRandomEntry();
+    }
+  };
+
+  const handleButton2Press = () => {
+    if (isDouble) {
+      setMyDecision("ND");
+      selectRandomEntry();
+    } else {
+      setMyDecision("D/P");
+      selectRandomEntry();
+    }
+  };
 
   const formatTime = (totalSeconds) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -149,13 +208,20 @@ export default function EPC_Quiz({ route, navigation }) {
     console.log("answer array", answerArray)
     setIsRewinding(true);
     setRewindPosition(index);
-    const boardStr = quizArray[index];
+    const [nextKeyTop, nextKeyBottom] = quizArray[index];
     const answer = quizStats[index].value;
+
+    // Update Board State
     const updatedCheckersA = [...checkersA];
+    const updatedCheckersB = [...checkersB];
     for (let i = 0; i < 6; i++) {
-        updatedCheckersA[5-i] = parseInt(boardStr[i], 16);
+      updatedCheckersA[5-i] = parseInt(nextKeyBottom[i], 16);
+    }
+    for (let i = 0; i < 6; i++) {
+      updatedCheckersB[i+18] = parseInt(nextKeyTop[i], 16);
     }
     setCheckersA(updatedCheckersA);
+    setCheckersB(updatedCheckersB);
   }
 
   const selectRandomEntry = () => {
@@ -164,20 +230,21 @@ export default function EPC_Quiz({ route, navigation }) {
   console.log("ARRAYS", answerArray, quizArray, currentIndex);
 
   // 1. EVALUATE PREVIOUS ANSWER (if not the very first move)
-  if (randomEntry) {
-    const estimateValue = (method === "Fastimate") 
-      ? parseFloat(randomEntry.FASTIMATE) 
-      : parseFloat(randomEntry.BESTIMATE);
-      
-    const EPCDiff = Math.abs(parseFloat(value) - estimateValue);
+  if (randomBottomEntry) {
+    const estimateValueBottom = parseFloat(randomBottomEntry.BESTIMATE);
+    const estimateValueTop = parseFloat(randomTopEntry.BESTIMATE);
     
     updateStatValue(
       currentIndex, 
-      EPCDiff > 0.01 || Number.isNaN(EPCDiff) ? estimateValue.toFixed(1) : "", 
-      EPCDiff <= 0.01 ? "green" : EPCDiff <= 1.0 ? "yellow" : "red"
+      myDecision == trueDecision ? "" : myDecision,
+      myDecision == trueDecision ? "green" : "red"
     );
 
-    setInaccuracyCount(prev => prev + (Number.isNaN(EPCDiff) ? 0 : EPCDiff));
+    // Update answer array:
+    const updatedAnswerArray = [...answerArray];
+    updatedAnswerArray[currentIndex - 1] = myDecision;
+    setAnswerArray(updatedAnswerArray);
+    console.log("Updated answer array", updatedAnswerArray, "with my decision", myDecision, "and true decision", trueDecision);
   }
 
   // 2. CHECK FINISH CONDITION
@@ -189,38 +256,54 @@ export default function EPC_Quiz({ route, navigation }) {
       correct: quizStats.filter(stat => stat.color === "green").length,
       mistake: quizStats.filter(stat => stat.color === "yellow").length,
       count: numPositions,
-      mode: "EPC",
+      mode: "Benjamin Count",
     });
     return; // Stop execution
   }
 
-  // 3. GENERATE NEXT POSITION
-  const nextKey = keys[Math.floor(Math.random() * keys.length)];
-  const nextEntry = filteredPositions[nextKey];
+  let nextKeyBottom, nextKeyTop, nextEntryBottom, nextEntryTop;
 
-  // Update Method and Board for the NEW position
-  const nextMethod = (settings.isFastimate && !settings.isMCG) ? "Fastimate" :
-                     (settings.isFastimate && settings.isMCG) ? (Math.random() < 0.5 ? "Fastimate" : "MCG") :
-                     nextEntry?.METHOD;
+  // 3. GENERATE NEXT POSITION
+  while (true) {
+    const _nextKeyBottom = keys[Math.floor(Math.random() * keys.length)];
+    const _nextKeyTop = keys[Math.floor(Math.random() * keys.length)];
+    const _nextEntryBottom = filteredPositions[_nextKeyBottom];
+    const _nextEntryTop = filteredPositions[_nextKeyTop];
+
+    if (isCloseRace(_nextEntryBottom, _nextEntryTop) != "No") {
+      nextKeyBottom = _nextKeyBottom;
+      nextKeyTop = _nextKeyTop;
+      nextEntryBottom = _nextEntryBottom;
+      nextEntryTop = _nextEntryTop;
+      break;
+    }
+  }
   
-  setMethod(nextMethod);
-  setRandomEntry({ key: nextKey, ...nextEntry });
-  setValue(""); // Clear keypad for next round
+  setRandomTopEntry({ key: nextKeyTop, ...nextEntryTop });
+  setRandomBottomEntry({ key: nextKeyBottom, ...nextEntryBottom });
+  setMyDecision(""); // Clear my decision for next round
+  setTrueDecision(isCloseRace(nextEntryBottom, nextEntryTop)); // Set the true decision for this position
+  setIsDouble(false); // Reset double state for next round
   const updatedQuizArray = [...quizArray];
-  if (!randomEntry) {
-    updatedQuizArray[0] = nextKey;
+  if (!randomTopEntry) {
+    updatedQuizArray[0] = [nextKeyTop, nextKeyBottom, isCloseRace(nextEntryBottom, nextEntryTop)];
   } else {
-    updatedQuizArray[currentIndex+1] = nextKey;
+    updatedQuizArray[currentIndex+1] = [nextKeyTop, nextKeyBottom, isCloseRace(nextEntryBottom, nextEntryTop)];
   }
   setQuizArray(updatedQuizArray);
   console.log("updated quiz array", updatedQuizArray);
 
   // Update Board State
   const updatedCheckersA = [...checkersA];
+  const updatedCheckersB = [...checkersB];
   for (let i = 0; i < 6; i++) {
-    updatedCheckersA[5-i] = parseInt(nextKey[i], 16);
+    updatedCheckersA[5-i] = parseInt(nextKeyBottom[i], 16);
+  }
+  for (let i = 0; i < 6; i++) {
+    updatedCheckersB[i+18] = parseInt(nextKeyTop[i], 16);
   }
   setCheckersA(updatedCheckersA);
+  setCheckersB(updatedCheckersB);
 
   // Finally, increment the counter for the UI
   setPositionCount(prev => prev + 1);
@@ -237,8 +320,13 @@ export default function EPC_Quiz({ route, navigation }) {
           isInteractive={false}/>
       </View>
       <View style={styles.sidePanel}>
-        <View style={[styles.keypadWrapper, isRewinding ? { opacity : 0.0 } : { opacity : 1.0 }]}>
-          <Keypad value={value} setValue={setValue} isDisabled={isRewinding} onEnter={selectRandomEntry}/>
+        <View style={[styles.decisionPanel, isRewinding ? { opacity : 0.0 } : { opacity : 1.0 }]}>
+          <TouchableOpacity style={styles.decisionButton} onPress={() => handleButton1Press()}>
+            <Text style={styles.decisionButtonText}>{ isDouble ? "Take" : "Double" }</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.decisionButton} onPress={() => handleButton2Press()}>
+            <Text style={styles.decisionButtonText}>{ isDouble ? "Pass" : "Roll" }</Text>
+          </TouchableOpacity>
         </View>
         <View style={styles.resultsPanel}>
           {quizStats.map((item, index) => (
@@ -264,10 +352,6 @@ export default function EPC_Quiz({ route, navigation }) {
           <Text style={styles.infoText}> {formatTime(seconds)}
           </Text>
         </View>
-        <View style={styles.infoSubscreenBottom}>
-          <Text style={styles.infoText}> {method ?? ""}
-          </Text>
-        </View>
       </View>
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Home')}>
         <Text style={styles.homeText}>
@@ -286,34 +370,39 @@ export default function EPC_Quiz({ route, navigation }) {
       <View style={[styles.reviewPanel, isRewinding ? { display : 'flex' } : { display: 'none' }]}>
         <View style={styles.upperReviewPanel}>
           <Text style={styles.infoText}>
-            { isRewinding ? `Method: ${positions[quizArray[rewindPosition]]?.METHOD}` : ""}
+            { isRewinding ? `Method: ${positions[quizArray[0][rewindPosition]]?.METHOD} / ${positions[quizArray[1][rewindPosition]]?.METHOD}` : ""}
           </Text>
         </View>
         <View style={styles.middleReviewPanel1}>
           <Text style={styles.infoText}>
-            { isRewinding ? `My guess: ${answerArray[rewindPosition] ?? ""}` : ""}
+            { isRewinding ? `Variance Score: ${varianceScoreMap.get(positions[quizArray[0][rewindPosition]]?.VARIANCE) + varianceScoreMap.get(positions[quizArray[1][rewindPosition]]?.VARIANCE)}` : ""}
           </Text>
         </View>
         <View style={styles.middleReviewPanel2}>
           <Text style={styles.infoText}>
-            { isRewinding ? "Estimate EPC: " + positions[quizArray[rewindPosition]]?.BESTIMATE : ""}
+            { isRewinding ? "My guess: " + answerArray[rewindPosition] : ""}
           </Text>
         </View>
         <View style={styles.lowerReviewPanel}>
           <Text style={styles.infoText}>
-            { isRewinding ? "Actual EPC: " + positions[quizArray[rewindPosition]]?.EPC : ""}
+            { isRewinding ? "Correct: " + quizArray[rewindPosition][2] : ""}
           </Text>
         </View>
       </View>
       <TouchableOpacity style={[styles.resumeButton, isRewinding ? { display: 'flex' } : { display: 'none' }]} 
           onPress={() => {
             setIsRewinding(false);
-            if (randomEntry) {
+            if (randomBottomEntry) {
               const updatedCheckersA = [...checkersA];
               for (let i = 0; i < 6; i++) {
-                updatedCheckersA[5-i] = parseInt(randomEntry.key[i], 16);
+                updatedCheckersA[5-i] = parseInt(randomBottomEntry.key[i], 16);
               }
               setCheckersA(updatedCheckersA);
+              const updatedCheckersB = [...checkersB];
+              for (let i = 0; i < 6; i++) {
+                updatedCheckersB[i+18] = parseInt(randomTopEntry.key[i], 16);
+              }
+              setCheckersB(updatedCheckersB);
             }
           }}>
         <Text style={styles.resumeButtonText}>
@@ -399,6 +488,13 @@ const stylesFunc = (height, width) => StyleSheet.create({
     fontFamily: 'Arial',
     textAlign: 'center',
   },
+  decisionButtonText: {
+    color: 'black',
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'Arial',
+    textAlign: 'center',
+  },
   keypadWrapper: {
     height: '30%',  // Give it a fixed height
     width: '50%',
@@ -456,13 +552,34 @@ const stylesFunc = (height, width) => StyleSheet.create({
     marginTop : 0.05 * height,
     flexDirection : "column",
     justifyContent : "space-evenly",
-    alignItems : "center",
+    alignItems : "flex-end",
     backgroundColor : "dodgerblue",
 },
+  decisionPanel: {
+    height: '40%',
+    width: '60%',
+    marginTop: 0.05 * height,
+    backgroundColor: 'dodgerblue',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    flexDirection: 'column',
+  },
+  decisionButton: {
+    backgroundColor: 'white',
+    padding: 10,
+    borderRadius: 5,
+    borderWidth: 3,
+    borderColor: 'black',
+    margin: 5,
+    width: '60%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   resultsPanel: {
     height: '27%',
     width: '80%',
     backgroundColor: 'orange',
+    marginRight: 0.03 * height,
     marginTop: height * 0.15,
     flexDirection: 'row',
     flexWrap: 'wrap', // Allows items to drop to the next line

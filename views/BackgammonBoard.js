@@ -1,13 +1,10 @@
 // Component file for the Backgammon board view. Takes numCheckers and liftToTop as props.
 
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import React, { useRef, useState, useEffect } from 'react';
-import Triangle from '@react-native-toolkit/triangle';
-import { useWindowDimensions } from 'react-native';
-import { TouchableWithoutFeedback } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
-const checkerACol = '#1e63c9';
-const checkerBCol = '#ffffff';
+const checkerACol = 'crimson';
+const checkerBCol = 'green';
 const pointACol = '#ffc919';
 const pointBCol = '#f57231';
 const surfaceCol = '#2a91e0';
@@ -24,26 +21,31 @@ function boardIDTranslate(x) {
     }
 }
 
-const Point = ({ liftValue, numCheckers, inputStyle, isTop }) => {
+const Point = ({ liftValue, countA, countB, inputStyle, isTop, activePlayer, isMulti }) => {
   const { height } = useWindowDimensions();
   const heightChecker = height * 0.08;
   const heightPoint = height * 0.384;
   const styles = stylesFunc(height);
-  const count = numCheckers;
+  console.log("multi", isMulti, "countA", countA, "countB", countB);
+  
+  // Determine count
+  const isPlayerA = isMulti ? (countA > 0 || countB === 0) : true;
+  const count = isMulti ? (countA > 0 ? countA : countB) : countA;
+  const activeCheckerColor = isPlayerA ? checkerACol : checkerBCol;
 
   const handlePress = (event) => {
-      const { pageX, pageY, locationX, locationY } = event.nativeEvent;
+      const { locationX, locationY } = event.nativeEvent;
       console.log(`Press coordinates relative to View: X=${locationX}, Y=${locationY}, target=${event.target}`);
       const preLevel = Math.ceil((heightPoint - locationY) / heightChecker);
       const level = isTop ? (6 - preLevel) : preLevel;
       console.log(typeof locationY, typeof heightChecker, locationY, heightChecker);
       console.log(`Level: ${(heightPoint - locationY) / heightChecker}`);
       console.log(liftValue === null ? 'No liftValue function provided' : 'LiftValue function is provided');
-      liftValue(level);
+      liftValue(level, activePlayer);
   };
 
   const handleLongPress = (event) => {
-    liftValue(0);
+    liftValue(0, activePlayer);
   }
 
   return (
@@ -53,7 +55,7 @@ const Point = ({ liftValue, numCheckers, inputStyle, isTop }) => {
                       onPress={handlePress} onLongPress={handleLongPress}>
         <View style={isTop ? styles.myContainerTop : styles.myContainerBottom}>
             {Array.from({ length: Math.min(5, count) }).map((_, index) => (
-            <View key={index} style={styles.circle} pointerEvents="none">
+            <View key={index} style={[styles.circle, { backgroundColor: activeCheckerColor }]} pointerEvents="none">
               <Text style={styles.checkerText}>
                 {((index === 0 && isTop) || (index == 4 && !isTop)) && count > 5 ? count.toString() : ""}
               </Text>
@@ -68,167 +70,271 @@ function getNumHomeCheckers(numCheckers) {
     return 15 - numCheckers.reduce((acc, item) => acc + item, 0);
 }
 
-function getPipCount(numCheckers) {
+function getPipCount(numCheckers, isPlayerA = true) {
+  if (!isPlayerA) {
+    numCheckers = numCheckers.slice().reverse();
+    console.log("reversed", numCheckers);
+  }
   return numCheckers.reduce((acc, item, index) => acc + item * (index + 1), 0);
 }
 
-function BackgammonBoard({ numCheckers, liftToTop, onCallParentFunction }) {
+function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction, isInteractive }) {
   const { height } = useWindowDimensions();
   const styles = stylesFunc(height);
+
+  console.log("checkersA", checkersA, "checkersB", checkersB);
+  const isMulti = (checkersB[0] != -1);
+  console.log("isMulti", isMulti, checkersB);
+
+  // Toggle between A and B
+  const [selectedPlayer, setSelectedPlayer] = useState('A');
   const [bottomPipCount, setBottomPipCount] = useState(0);
+  const [topPipCount, setTopPipCount] = useState(0);
 
   useEffect(() => {
-    console.log("numCHeckers has changed", getPipCount(numCheckers));
-    setBottomPipCount(getPipCount(numCheckers));
+    setBottomPipCount(getPipCount(checkersA));
+    setTopPipCount(getPipCount(checkersB, false));
     onCallParentFunction();
-  }, [numCheckers]);
+  }, [checkersA, checkersB]);
 
     return (
         <View style={styles.container}>
             <View style={styles.board}>
-                <View style={styles.NWtray}/>
-                <View style={styles.NEtray}/>
+                  <View style={styles.NWtray}/>
+                  <View style={styles.NEtray}>
+                  {isMulti && (
+                    <>
+                      {Array.from({ length: getNumHomeCheckers(checkersB) }).map((_, index) => (
+                        <View key={index} style={[styles.stackedChecker, { backgroundColor: checkerBCol }]} />
+                      ))}
+                      <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                        {getNumHomeCheckers(checkersB)}
+                      </Text>
+                    </>
+                  )}
+                </View>
                 <View style={styles.SWtray}/>
                 <View style={styles.SEtray}>
-                  {Array.from({ length: getNumHomeCheckers(numCheckers) }).map((_, index) => (
-                        <View key={index} style={styles.stackedChecker} />
+                  {Array.from({ length: getNumHomeCheckers(checkersA) }).map((_, index) => (
+                        <View key={index} style={[styles.stackedChecker, { backgroundColor: checkerACol }]} />
                     ))}
                     <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
-                        {getNumHomeCheckers(numCheckers)}
+                        {getNumHomeCheckers(checkersA)}
                     </Text>
                 </View>
 
                 <View style={styles.surface}>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 13)}
-                          numCheckers={numCheckers[12]}
+                          liftValue={(newValue) => liftToTop(newValue, 13, selectedPlayer)}
+                          countA={checkersA[12]}
+                          countB={checkersB[12]}
                           inputStyle={styles.pointADown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 14)}
-                          numCheckers={numCheckers[13]}
+                          liftValue={(newValue) => liftToTop(newValue, 14, selectedPlayer)}
+                          countA={checkersA[13]}
+                          countB={checkersB[13]}
                           inputStyle={styles.pointBDown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 15)}
-                          numCheckers={numCheckers[14]}
+                          liftValue={(newValue) => liftToTop(newValue, 15, selectedPlayer)}
+                          countA={checkersA[14]}
+                          countB={checkersB[14]}
                           inputStyle={styles.pointADown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 16)}
-                          numCheckers={numCheckers[15]}
+                          liftValue={(newValue) => liftToTop(newValue, 16, selectedPlayer)}
+                          countA={checkersA[15]}
+                          countB={checkersB[15]}
                           inputStyle={styles.pointBDown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 17)}
-                          numCheckers={numCheckers[16]}
+                          liftValue={(newValue) => liftToTop(newValue, 17, selectedPlayer)}
+                          countA={checkersA[16]}
+                          countB={checkersB[16]}
                           inputStyle={styles.pointADown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 18)}
-                          numCheckers={numCheckers[17]}
+                          liftValue={(newValue) => liftToTop(newValue, 18, selectedPlayer)}
+                          countA={checkersA[17]}
+                          countB={checkersB[17]}
                           inputStyle={styles.pointBDown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 12)}
-                          numCheckers={numCheckers[11]}
+                          liftValue={(newValue) => liftToTop(newValue, 12, selectedPlayer)}
+                          countA={checkersA[11]}
+                          countB={checkersB[11]}
                           inputStyle={styles.pointBUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 11)}
-                          numCheckers={numCheckers[10]}
+                          liftValue={(newValue) => liftToTop(newValue, 11, selectedPlayer)}
+                          countA={checkersA[10]}
+                          countB={checkersB[10]}
                           inputStyle={styles.pointAUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 10)}
-                          numCheckers={numCheckers[9]}
+                          liftValue={(newValue) => liftToTop(newValue, 10, selectedPlayer)}
+                          countA={checkersA[9]}
+                          countB={checkersB[9]}
                           inputStyle={styles.pointBUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 9)}
-                          numCheckers={numCheckers[8]}
+                          liftValue={(newValue) => liftToTop(newValue, 9, selectedPlayer)}
+                          countA={checkersA[8]}
+                          countB={checkersB[8]}
                           inputStyle={styles.pointAUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 8)}
-                          numCheckers={numCheckers[7]}
+                          liftValue={(newValue) => liftToTop(newValue, 8, selectedPlayer)}
+                          countA={checkersA[7]}
+                          countB={checkersB[7]}
                           inputStyle={styles.pointBUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 7)}
-                          numCheckers={numCheckers[6]}
+                          liftValue={(newValue) => liftToTop(newValue, 7, selectedPlayer)}
+                          countA={checkersA[6]}
+                          countB={checkersB[6]}
                           inputStyle={styles.pointAUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                 </View>
                 <View style={styles.bar}>
-                  <Text style={styles.pipCount}>
-                    {""}
-                  </Text>
+                  {isMulti ? (<Text style={styles.pipCount}>
+                    {topPipCount}
+                  </Text>) : (<Text style={styles.pipCount}> {" "}</Text>)
+                  }
+                  {isMulti && isInteractive && (
+                    <TouchableOpacity 
+                      style={[styles.toggleButton, { borderColor: selectedPlayer === 'A' ? checkerACol : checkerBCol }]}
+                      onPress={() => setSelectedPlayer(prev => prev === 'A' ? 'B' : 'A')}>
+                      <Text style={styles.toggleText}>EDIT</Text>
+                      <View style={[styles.indicator, { backgroundColor: selectedPlayer === 'A' ? checkerACol : checkerBCol }]} />
+                    </TouchableOpacity>
+                  )}
                   <Text style={styles.pipCount}>
                     {bottomPipCount}
                   </Text>
                 </View>
                 <View style={styles.surface}>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 19)}
-                          numCheckers={numCheckers[18]}
+                          liftValue={(newValue) => liftToTop(newValue, 19, selectedPlayer)}
+                          countA={checkersA[18]}
+                          countB={checkersB[18]}
                           inputStyle={styles.pointADown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 20)}
-                          numCheckers={numCheckers[19]}
+                          liftValue={(newValue) => liftToTop(newValue, 20, selectedPlayer)}
+                          countA={checkersA[19]}
+                          countB={checkersB[19]}
                           inputStyle={styles.pointBDown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 21)}
-                          numCheckers={numCheckers[20]}
+                          liftValue={(newValue) => liftToTop(newValue, 21, selectedPlayer)}
+                          countA={checkersA[20]}
+                          countB={checkersB[20]}
                           inputStyle={styles.pointADown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 22)}
-                          numCheckers={numCheckers[21]}
+                          liftValue={(newValue) => liftToTop(newValue, 22, selectedPlayer)}
+                          countA={checkersA[21]}
+                          countB={checkersB[21]}
                           inputStyle={styles.pointBDown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 23)}
-                          numCheckers={numCheckers[22]}
+                          liftValue={(newValue) => liftToTop(newValue, 23, selectedPlayer)}
+                          countA={checkersA[22]}
+                          countB={checkersB[22]}
                           inputStyle={styles.pointADown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 24)}
-                          numCheckers={numCheckers[23]}
+                          liftValue={(newValue) => liftToTop(newValue, 24, selectedPlayer)}
+                          countA={checkersA[23]}
+                          countB={checkersB[23]}
                           inputStyle={styles.pointBDown}
-                          isTop={true}/>
+                          isTop={true}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 6)}
-                          numCheckers={numCheckers[5]}
+                          liftValue={(newValue) => liftToTop(newValue, 6, selectedPlayer)}
+                          countA={checkersA[5]}
+                          countB={checkersB[5]}
                           inputStyle={styles.pointBUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 5)}
-                          numCheckers={numCheckers[4]}
+                          liftValue={(newValue) => liftToTop(newValue, 5, selectedPlayer)}
+                          countA={checkersA[4]}
+                          countB={checkersB[4]}
                           inputStyle={styles.pointAUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 4)}
-                          numCheckers={numCheckers[3]}
+                          liftValue={(newValue) => liftToTop(newValue, 4, selectedPlayer)}
+                          countA={checkersA[3]}
+                          countB={checkersB[3]}
                           inputStyle={styles.pointBUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 3)}
-                          numCheckers={numCheckers[2]}
+                          liftValue={(newValue) => liftToTop(newValue, 3, selectedPlayer)}
+                          countA={checkersA[2]}
+                          countB={checkersB[2]}
                           inputStyle={styles.pointAUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 2)}
-                          numCheckers={numCheckers[1]}
+                          liftValue={(newValue) => liftToTop(newValue, 2, selectedPlayer)}
+                          countA={checkersA[1]}
+                          countB={checkersB[1]}
                           inputStyle={styles.pointBUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                         <Point 
-                          liftValue={(newValue) => liftToTop(newValue, 1)}
-                          numCheckers={numCheckers[0]}
+                          liftValue={(newValue) => liftToTop(newValue, 1, selectedPlayer)}
+                          countA={checkersA[0]}
+                          countB={checkersB[0]}
                           inputStyle={styles.pointAUp}
-                          isTop={false}/>
+                          isTop={false}
+                          activePlayer={selectedPlayer}
+                          isMulti={isMulti}/>
                 </View>
             </View>
         </View>
@@ -292,6 +398,23 @@ const stylesFunc = (height) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingBottom: 0.01 * height
+  },
+  toggleButton: {
+    padding: 5,
+    borderWidth: 2,
+    borderRadius: 5,
+    alignItems: 'center',
+    backgroundColor: '#222',
+  },
+  toggleText: {
+    color: 'white',
+    fontSize: 6,
+  },
+  indicator: {
+    width: 20,
+    height: 10,
+    marginTop: 4,
+    borderRadius: 2,
   },
   pointADown: {
     width: 0,
@@ -364,6 +487,7 @@ const stylesFunc = (height) => StyleSheet.create({
     backgroundColor: trayCol,
     top: 0.0045 * height,
     right: 0.0045 * height,
+    alignItems: 'center',
   },
   SEtray: {
     position: 'absolute',
