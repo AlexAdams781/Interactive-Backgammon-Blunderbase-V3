@@ -1,12 +1,19 @@
 // Component for the EPC_Quiz screen of the app. Takes navigation as a prop. Still in development.
 
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { GameContext } from '../app/GameContext';
 import positions from '../assets/epc_positions.json';
+import { carnivalTheme, themeMap } from '../assets/themes';
 import BackgammonBoard from "../views/BackgammonBoard";
 
 export default function Benjamin_Quiz({ route, navigation }) {
+  const { soloCheckersCopy, setSoloCheckersCopy, pairCheckersCopy, setPairCheckersCopy, selectedTheme } = useContext(GameContext);
+  const activeTheme = themeMap && themeMap.has(selectedTheme) 
+    ? themeMap.get(selectedTheme) 
+    : carnivalTheme;
+
   const [checkersA, setCheckersA] = useState(
       [0, 0, 0, 0, 0, 0,
        0, 0, 0, 0, 0, 0,
@@ -42,6 +49,10 @@ export default function Benjamin_Quiz({ route, navigation }) {
   varianceScoreMap.set("medium", 2);
   varianceScoreMap.set("high", 3);
 
+  const copyPosition = () => {
+    setPairCheckersCopy([checkersA, checkersB]);
+  };
+
   const updateStatValue = (index, newValue, newColor) => {
   setQuizStats(prevStats => {
     // 1. Create a shallow copy of the array
@@ -74,7 +85,7 @@ export default function Benjamin_Quiz({ route, navigation }) {
   };
 
   const { width, height } = useWindowDimensions();
-  const styles = stylesFunc(height, width);
+  const styles = stylesFunc(height, width, activeTheme);
 
   const [isDouble, setIsDouble] = useState(false);
   const [myDecision, setMyDecision] = useState("");
@@ -94,7 +105,7 @@ export default function Benjamin_Quiz({ route, navigation }) {
   const [rewindPosition, setRewindPosition] = useState(0);
 
   useEffect(() => {
-    selectRandomEntry();
+    selectRandomEntry("");
   }, []);
 /*
   useEffect(() => {
@@ -106,10 +117,10 @@ export default function Benjamin_Quiz({ route, navigation }) {
   }, [value]); */
 
   useEffect(() => {
-    console.log("tic");
+    //console.log("tic");
     // 1. Create the interval when the component mounts
     const timer = setInterval(() => {
-      console.log("toc", isPaused, isRewinding, seconds);
+      //console.log("toc", isPaused, isRewinding, seconds);
       if (!isPaused && !isRewinding) {
         setSeconds(prevSeconds => prevSeconds + 1);
       }
@@ -155,7 +166,7 @@ export default function Benjamin_Quiz({ route, navigation }) {
     } else if (estimateTop >= takePoint) {
       return "D/P";
     } else if (estimateTop + 2.25 >= estimateBottom) {
-      return "ReD/T";
+      return "D/T";
     } else if (estimateTop + 3 >= estimateBottom) {
       return "D/T";
     } else if (estimateTop + 8 >= estimateBottom) {
@@ -166,21 +177,23 @@ export default function Benjamin_Quiz({ route, navigation }) {
   };
 
   const handleButton1Press = () => {
+    console.log("Button 1 pressed. isDouble:", isDouble);
     if (!isDouble) {
       setIsDouble(true);
     } else {
       setMyDecision("D/T");
-      selectRandomEntry();
+      selectRandomEntry("D/T");
     }
   };
 
   const handleButton2Press = () => {
+    console.log("Button 2 pressed. isDouble:", isDouble);
     if (isDouble) {
-      setMyDecision("ND");
-      selectRandomEntry();
-    } else {
       setMyDecision("D/P");
-      selectRandomEntry();
+      selectRandomEntry("D/P");
+    } else {
+      setMyDecision("ND");
+      selectRandomEntry("ND");
     }
   };
 
@@ -205,7 +218,7 @@ export default function Benjamin_Quiz({ route, navigation }) {
 
   const revisitPosition = (index) => {
     console.log("positions", index);
-    console.log("answer array", answerArray)
+    console.log("answer array", answerArray, "position count", positionCount);
     setIsRewinding(true);
     setRewindPosition(index);
     const [nextKeyTop, nextKeyBottom] = quizArray[index];
@@ -224,10 +237,10 @@ export default function Benjamin_Quiz({ route, navigation }) {
     setCheckersB(updatedCheckersB);
   }
 
-  const selectRandomEntry = () => {
+  const selectRandomEntry = (myDecision) => {
   // Use the current index (0-indexed) for all logic in this turn
   const currentIndex = positionCount - 1;
-  console.log("ARRAYS", answerArray, quizArray, currentIndex);
+  console.log("ARRAYS", answerArray, quizArray, currentIndex, "my decision", myDecision, "true decision", trueDecision);
 
   // 1. EVALUATE PREVIOUS ANSWER (if not the very first move)
   if (randomBottomEntry) {
@@ -236,15 +249,15 @@ export default function Benjamin_Quiz({ route, navigation }) {
     
     updateStatValue(
       currentIndex, 
-      myDecision == trueDecision ? "" : myDecision,
-      myDecision == trueDecision ? "green" : "red"
+      (myDecision == trueDecision) ? "" : trueDecision,
+      (myDecision == trueDecision || (myDecision == "D/T" && trueDecision == "ReD/T")) ? "green" : "red"
     );
 
     // Update answer array:
     const updatedAnswerArray = [...answerArray];
-    updatedAnswerArray[currentIndex - 1] = myDecision;
+    updatedAnswerArray[currentIndex] = myDecision;
     setAnswerArray(updatedAnswerArray);
-    console.log("Updated answer array", updatedAnswerArray, "with my decision", myDecision, "and true decision", trueDecision);
+    console.log("Updated answer array", updatedAnswerArray, "with my decision", myDecision, "and true decision", trueDecision, "current index", currentIndex);
   }
 
   // 2. CHECK FINISH CONDITION
@@ -281,7 +294,7 @@ export default function Benjamin_Quiz({ route, navigation }) {
   
   setRandomTopEntry({ key: nextKeyTop, ...nextEntryTop });
   setRandomBottomEntry({ key: nextKeyBottom, ...nextEntryBottom });
-  setMyDecision(""); // Clear my decision for next round
+  //setMyDecision(""); // Clear my decision for next round
   setTrueDecision(isCloseRace(nextEntryBottom, nextEntryTop)); // Set the true decision for this position
   setIsDouble(false); // Reset double state for next round
   const updatedQuizArray = [...quizArray];
@@ -358,6 +371,11 @@ export default function Benjamin_Quiz({ route, navigation }) {
             { "Home" }
         </Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.copyButton} onPress={() => copyPosition()}>
+        <Text style={styles.homeText}>
+            { "Copy" }
+        </Text>
+      </TouchableOpacity>
       <TouchableOpacity style={[styles.resume, isPaused ? { backgroundColor: 'rgba(240, 240, 240, 1.0)' } : { backgroundColor: 'transparent', pointerEvents: 'none' }]} 
       activeOpacity={1} onPress={() => setIsPaused(false)}>
         <Text style={styles.resumeText}>
@@ -370,12 +388,12 @@ export default function Benjamin_Quiz({ route, navigation }) {
       <View style={[styles.reviewPanel, isRewinding ? { display : 'flex' } : { display: 'none' }]}>
         <View style={styles.upperReviewPanel}>
           <Text style={styles.infoText}>
-            { isRewinding ? `Method: ${positions[quizArray[0][rewindPosition]]?.METHOD} / ${positions[quizArray[1][rewindPosition]]?.METHOD}` : ""}
+            { isRewinding ? `Method: ${positions[quizArray[rewindPosition][0]]?.METHOD} / ${positions[quizArray[rewindPosition][1]]?.METHOD}` : ""}
           </Text>
         </View>
         <View style={styles.middleReviewPanel1}>
           <Text style={styles.infoText}>
-            { isRewinding ? `Variance Score: ${varianceScoreMap.get(positions[quizArray[0][rewindPosition]]?.VARIANCE) + varianceScoreMap.get(positions[quizArray[1][rewindPosition]]?.VARIANCE)}` : ""}
+            { isRewinding ? `Variance Score: ${varianceScoreMap.get(positions[quizArray[rewindPosition][0]]?.VARIANCE) + varianceScoreMap.get(positions[quizArray[rewindPosition][1]]?.VARIANCE)}` : ""}
           </Text>
         </View>
         <View style={styles.middleReviewPanel2}>
@@ -422,40 +440,40 @@ const statsContainer = (bgColor) => ({
   alignItems: 'center',
 });
 
-const stylesFunc = (height, width) => StyleSheet.create({
+const stylesFunc = (height, width, theme) => StyleSheet.create({
   container: {
     flex: 1,
     gap: 20,
-    backgroundColor: 'dodgerblue',
+    backgroundColor: theme?.backgroundColor,
     alignItems: 'center',
     justifyContent: 'center',
   },
   customText: {
-    color: 'white',
+    color: theme?.buttonTextCol,
     fontSize: 24,
     fontWeight: 'bold',
     fontFamily: 'Arial',
   },
   homeText: {
-    color: 'white',
+    color: theme?.buttonTextCol,
     fontSize: 10,
     fontWeight: 'bold',
     fontFamily: 'Arial',
     textAlign: 'center',
   },
   backButton: {
-    backgroundColor: 'red',
+    backgroundColor: theme?.buttonCol,
     borderRadius: 0.01 * height,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'absolute',
     top: 0.08 * height,
-    left: 0.12 * height,
+    left: 0.055 * height,
     height: 0.07 * height,
     width: 0.09 * height
   },
   pauseButton: {
-    backgroundColor: 'red',
+    backgroundColor: theme?.buttonCol,
     borderRadius: 0.01 * height,
     justifyContent: 'center',
     alignItems: 'center',
@@ -464,6 +482,17 @@ const stylesFunc = (height, width) => StyleSheet.create({
     left: 0.66 * width,
     height: '8%',
     width: '12%',
+  },
+  copyButton: {
+    backgroundColor: theme?.buttonCol,
+    borderRadius: 0.01 * height,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 0.20 * height,
+    left: 0.055 * height,
+    height: 0.07 * height,
+    width: 0.09 * height
   },
   resume: {
     position: 'absolute',
@@ -542,7 +571,7 @@ const stylesFunc = (height, width) => StyleSheet.create({
     flexDirection : "row",
     justifyContent : "space-between",
     alignItems : "center", 
-    backgroundColor : "dodgerblue",
+    backgroundColor : theme?.backgroundColor,
     paddingLeft : 0.075 * height,
   },
   sidePanel : {
@@ -553,13 +582,13 @@ const stylesFunc = (height, width) => StyleSheet.create({
     flexDirection : "column",
     justifyContent : "space-evenly",
     alignItems : "flex-end",
-    backgroundColor : "dodgerblue",
+    backgroundColor : theme?.backgroundColor,
 },
   decisionPanel: {
     height: '40%',
     width: '60%',
     marginTop: 0.05 * height,
-    backgroundColor: 'dodgerblue',
+    backgroundColor: theme?.backgroundColor,
     justifyContent: 'flex-end',
     alignItems: 'center',
     flexDirection: 'column',
@@ -578,7 +607,7 @@ const stylesFunc = (height, width) => StyleSheet.create({
   resultsPanel: {
     height: '27%',
     width: '80%',
-    backgroundColor: 'orange',
+    backgroundColor: theme?.resultsBorderCol,
     marginRight: 0.03 * height,
     marginTop: height * 0.15,
     flexDirection: 'row',
@@ -600,7 +629,7 @@ const stylesFunc = (height, width) => StyleSheet.create({
     width: '24%',
     position: 'absolute',
     top: '10%',
-    left: '71%',
+    left: '73.5%',
     flexDirection: 'column',
     borderWidth: 3,
     borderRadius: 10,
@@ -634,19 +663,19 @@ const stylesFunc = (height, width) => StyleSheet.create({
     borderBottomRightRadius: 10,
   },
   resumeButton: {
-    backgroundColor: 'green',
+    backgroundColor: theme?.buttonCol,
     padding: 10,
     borderRadius: 5,
     position: 'absolute',
     height: '8%',
     width: '12%',
     top: '58%',
-    left: '77%',
+    left: '79%',
     justifyContent: 'center',
     alignItems: 'center',
   },
   resumeButtonText: {
-    color: 'white',
+    color: theme?.buttonTextCol,
     fontSize: 14,
     fontWeight: 'bold',
     fontFamily: 'Arial',

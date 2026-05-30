@@ -1,11 +1,18 @@
 // Component for the Setup Position screen of the app. Takes navigation as a prop.
 
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { GameContext } from '../app/GameContext';
 import positions from '../assets/epc_positions.json';
+import { carnivalTheme, themeMap } from '../assets/themes';
 import BackgammonBoard from "../views/BackgammonBoard";
 
 export default function Two_Players({ navigation }) {
+  const { soloCheckersCopy, setSoloCheckersCopy, pairCheckersCopy, setPairCheckersCopy, selectedTheme } = useContext(GameContext);
+  const activeTheme = themeMap && themeMap.has(selectedTheme) 
+    ? themeMap.get(selectedTheme) 
+    : carnivalTheme;
+
   console.log("Hello");
   const [checkersA, setcheckersA] = useState(
       [0, 0, 0, 0, 0, 0,
@@ -27,6 +34,11 @@ export default function Two_Players({ navigation }) {
   const [BestimateText, setBestimateText] = useState("");
   const [DistributionText, setDistributionText] = useState("");
   const [FastimateText, setFastimateText] = useState("");
+
+  const pastePosition = () => {
+    setcheckersA([...pairCheckersCopy[0]]);
+    setcheckersB([...pairCheckersCopy[1]]);
+  };
 
   function getNumHomeCheckers(arr) {
     return 15 - arr.reduce((acc, item) => acc + item, 0);
@@ -54,12 +66,12 @@ export default function Two_Players({ navigation }) {
   };
 
   const resetBoard = () => {
-        setcheckersA(new Array(24).fill(0));
-        setcheckersB(new Array(24).fill(0));
-    }
+    setcheckersA(new Array(24).fill(0));
+    setcheckersB(new Array(24).fill(0));
+  }
 
   const { height } = useWindowDimensions();
-  const styles = stylesFunc(height);
+  const styles = stylesFunc(height, activeTheme);
 
   const GridItem = ({ label, isVariable, isVariance, value, thin, style }) => (
   <View style={[styles.cell, thin ? styles.thinBorder : styles.defaultBorder, style]}>
@@ -262,11 +274,21 @@ export default function Two_Players({ navigation }) {
                 { "Home" }
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.pasteButton} onPress={() => pastePosition()}>
+            <Text style={styles.homeText}>
+                { "Paste" }
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.resetButton} onPress={() => resetBoard()}>
+            <Text style={styles.homeText}>
+                { "Reset" }
+            </Text>
+          </TouchableOpacity>
         </View>
     )
 }
 
-const stylesFunc = (height) => StyleSheet.create({
+const stylesFunc = (height, theme) => StyleSheet.create({
       container: { 
         width: '30%',
         height: '85%',
@@ -274,7 +296,7 @@ const stylesFunc = (height) => StyleSheet.create({
         paddingTop: 10,
         paddingHorizontal: 20,
         paddingVertical: 20,
-        backgroundColor: 'dodgerblue',
+        backgroundColor: theme?.backgroundColor,
         alignItems: 'center',
         justifyContent: 'center',
       },
@@ -293,7 +315,7 @@ const stylesFunc = (height) => StyleSheet.create({
       statsContainer: {
         height : 0.075 * height,
         width : 0.6 * height,
-        backgroundColor : 'dodgerblue',
+        backgroundColor : theme?.backgroundColor,
         flexDirection : 'row',
       },
       insideStatsContainer : {
@@ -343,7 +365,7 @@ const stylesFunc = (height) => StyleSheet.create({
         flexDirection : "row",
         justifyContent : "space-between",
         alignItems : "center", 
-        backgroundColor : "dodgerblue",
+        backgroundColor : theme?.backgroundColor,
         paddingLeft : 0.075 * height,
         paddingRight : 0.075 * height,
       },
@@ -354,7 +376,7 @@ const stylesFunc = (height) => StyleSheet.create({
         flexDirection : "column",
         justifyContent : "space-evenly",
         alignItems : "center",
-        backgroundColor : "dodgerblue",
+        backgroundColor : theme?.backgroundColor,
     },
       evalButton : {
         height : 0.1 * height,
@@ -365,21 +387,21 @@ const stylesFunc = (height) => StyleSheet.create({
         borderRadius : 0.03 * height
       },
       homeText: {
-        color: 'white',
+        color: theme?.buttonTextCol,
         fontSize: 10,
         fontWeight: 'bold',
         fontFamily: 'Arial',
         textAlign: 'center',
       },
       resetText: {
-          color: 'white',
+          color: theme?.buttonTextCol,
           fontSize: 18,
           fontWeight: 'bold',
           fontFamily: 'Arial',
           borderRadius : 0.08 * height,
       },
       backButton: {
-        backgroundColor: 'red',
+        backgroundColor: theme?.buttonCol,
         borderRadius: 0.01 * height,
         justifyContent: 'center',
         alignItems: 'center',
@@ -390,13 +412,26 @@ const stylesFunc = (height) => StyleSheet.create({
         width: 0.09 * height
       },
       resetButton: {
-          height : 0.075 * height,
-          width : 0.6 * height,
-          backgroundColor : 'red',
-          flexDirection : 'row',
-          justifyContent: 'center',
-          textAlign: 'center',
-          borderRadius: 0.02 * height,
+        backgroundColor: theme?.buttonCol,
+        borderRadius: 0.01 * height,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'absolute',
+        top: 0.32 * height,
+        left: 0.055 * height,
+        height: 0.07 * height,
+        width: 0.09 * height
+      },
+      pasteButton: {
+        backgroundColor: theme?.buttonCol,
+        borderRadius: 0.01 * height,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'absolute',
+        top: 0.20 * height,
+        left: 0.055 * height,
+        height: 0.07 * height,
+        width: 0.09 * height
       },
       header: { 
         fontSize: 12, 
@@ -430,13 +465,13 @@ const stylesFunc = (height) => StyleSheet.create({
       },
       thickBorderTop: { 
         borderWidth: 4, 
-        borderColor: 'green',
+        borderColor: theme?.checkerCols[0],
         height: 100,
         borderRadius: 0.02 * height,
       },
       thickBorderBottom: { 
         borderWidth: 4, 
-        borderColor: 'crimson',
+        borderColor: theme?.checkerCols[1],
         height: 100,
         borderRadius: 0.02 * height,
       },

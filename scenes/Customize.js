@@ -1,12 +1,21 @@
 // Component for the Customize screen of the app. Takes navigation as a prop. Still in development.
 
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { useWindowDimensions } from 'react-native';
+import { useContext } from 'react';
+import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { GameContext } from '../app/GameContext';
+import { carnivalTheme, themeMap, themes } from '../assets/themes';
 
 export default function Home({ navigation }) {
   const { height } = useWindowDimensions();
-  const styles = stylesFunc(height);
+  const { setSelectedTheme, selectedTheme } = useContext(GameContext);
+  const activeTheme = themeMap && themeMap.has(selectedTheme) 
+        ? themeMap.get(selectedTheme) 
+        : carnivalTheme;
+  const styles = stylesFunc(height, activeTheme);
   console.log(useWindowDimensions());
+
+  
+
   return (
     <View style={styles.container}>
       <Text style={styles.customText}>
@@ -17,33 +26,51 @@ export default function Home({ navigation }) {
             { "Home" }
         </Text>
       </TouchableOpacity>
+      <View style={{ gap: 20, alignItems: 'center', justifyContent: 'center' }}>
+        {themes.map((theme) => (
+          <TouchableOpacity key={theme} style={styles.button} onPress={() => setSelectedTheme(theme)}>
+            <Text style={styles.buttonText}>
+              {theme}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 }
 
-const stylesFunc = (height) => StyleSheet.create({
+const stylesFunc = (height, theme) => StyleSheet.create({
   container: {
     flex: 1,
     gap: 20,
-    backgroundColor: 'dodgerblue',
+    backgroundColor: theme?.backgroundColor,
     alignItems: 'center',
     justifyContent: 'center',
   },
   customText: {
-    color: 'white',
+    color: theme?.textCol,
     fontSize: 24,
     fontWeight: 'bold',
     fontFamily: 'Arial',
   },
   homeText: {
-    color: 'white',
+    color: theme?.buttonTextCol,
     fontSize: 10,
     fontWeight: 'bold',
     fontFamily: 'Arial',
     textAlign: 'center',
   },
+  button: {
+    backgroundColor: theme?.buttonCol,
+    padding: 0.03 * height,
+    borderRadius: 0.03 * height,
+    width: 0.4 * height,
+    height: 0.12 * height,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   backButton: {
-    backgroundColor: 'red',
+    backgroundColor: theme?.buttonCol,
     borderRadius: 0.01 * height,
     justifyContent: 'center',
     alignItems: 'center',
@@ -52,5 +79,18 @@ const stylesFunc = (height) => StyleSheet.create({
     left: 0.12 * height,
     height: 0.07 * height,
     width: 0.09 * height
-  }
+  },
+  sidePanel : {
+    flexDirection : "column",
+    justifyContent : "space-evenly",
+    alignItems : "center",
+    backgroundColor : theme?.backgroundColor,
+  },
+  buttonText: {
+    color: theme?.buttonTextCol,
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'Arial',
+    textAlign: 'center',
+  },
 });

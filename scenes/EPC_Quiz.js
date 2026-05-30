@@ -1,13 +1,20 @@
 // Component for the EPC_Quiz screen of the app. Takes navigation as a prop. Still in development.
 
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { GameContext } from '../app/GameContext';
 import positions from '../assets/epc_positions.json';
+import { carnivalTheme, themeMap } from '../assets/themes';
 import BackgammonBoard from "../views/BackgammonBoard";
 import Keypad from "../views/Keypad";
 
 export default function EPC_Quiz({ route, navigation }) {
+  const { soloCheckersCopy, setSoloCheckersCopy, pairCheckersCopy, setPairCheckersCopy, selectedTheme } = useContext(GameContext);
+  const activeTheme = themeMap && themeMap.has(selectedTheme) 
+    ? themeMap.get(selectedTheme) 
+    : carnivalTheme;
+
   const [checkersA, setCheckersA] = useState(
       [0, 0, 0, 0, 0, 0,
        0, 0, 0, 0, 0, 0,
@@ -35,6 +42,10 @@ export default function EPC_Quiz({ route, navigation }) {
   { value: "", color: "white" },
   { value: "", color: "green" },
   ]);
+
+  const copyPosition = () => {
+    setSoloCheckersCopy(checkersA);
+  };
 
   const updateStatValue = (index, newValue, newColor) => {
   setQuizStats(prevStats => {
@@ -68,7 +79,7 @@ export default function EPC_Quiz({ route, navigation }) {
   };
 
   const { width, height } = useWindowDimensions();
-  const styles = stylesFunc(height, width);
+  const styles = stylesFunc(height, width, activeTheme);
 
   const [value, setValue] = useState("");
   const [randomEntry, setRandomEntry] = useState(null);
@@ -95,10 +106,8 @@ export default function EPC_Quiz({ route, navigation }) {
   }, [value]);
 
   useEffect(() => {
-    console.log("tic");
     // 1. Create the interval when the component mounts
     const timer = setInterval(() => {
-      console.log("toc", isPaused, isRewinding, seconds);
       if (!isPaused && !isRewinding) {
         setSeconds(prevSeconds => prevSeconds + 1);
       }
@@ -274,6 +283,11 @@ export default function EPC_Quiz({ route, navigation }) {
             { "Home" }
         </Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.copyButton} onPress={() => copyPosition()}>
+        <Text style={styles.homeText}>
+            { "Copy" }
+        </Text>
+      </TouchableOpacity>
       <TouchableOpacity style={[styles.resume, isPaused ? { backgroundColor: 'rgba(240, 240, 240, 1.0)' } : { backgroundColor: 'transparent', pointerEvents: 'none' }]} 
       activeOpacity={1} onPress={() => setIsPaused(false)}>
         <Text style={styles.resumeText}>
@@ -333,40 +347,40 @@ const statsContainer = (bgColor) => ({
   alignItems: 'center',
 });
 
-const stylesFunc = (height, width) => StyleSheet.create({
+const stylesFunc = (height, width, theme) => StyleSheet.create({
   container: {
     flex: 1,
     gap: 20,
-    backgroundColor: 'dodgerblue',
+    backgroundColor: theme?.backgroundColor,
     alignItems: 'center',
     justifyContent: 'center',
   },
   customText: {
-    color: 'white',
+    color: theme?.buttonTextCol,
     fontSize: 24,
     fontWeight: 'bold',
     fontFamily: 'Arial',
   },
   homeText: {
-    color: 'white',
+    color: theme?.buttonTextCol,
     fontSize: 10,
     fontWeight: 'bold',
     fontFamily: 'Arial',
     textAlign: 'center',
   },
   backButton: {
-    backgroundColor: 'red',
+    backgroundColor: theme?.buttonCol,
     borderRadius: 0.01 * height,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'absolute',
     top: 0.08 * height,
-    left: 0.12 * height,
+    left: 0.055 * height,
     height: 0.07 * height,
     width: 0.09 * height
   },
   pauseButton: {
-    backgroundColor: 'red',
+    backgroundColor: theme?.buttonCol,
     borderRadius: 0.01 * height,
     justifyContent: 'center',
     alignItems: 'center',
@@ -375,6 +389,17 @@ const stylesFunc = (height, width) => StyleSheet.create({
     left: 0.66 * width,
     height: '8%',
     width: '12%',
+  },
+  copyButton: {
+    backgroundColor: theme?.buttonCol,
+    borderRadius: 0.01 * height,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 0.20 * height,
+    left: 0.055 * height,
+    height: 0.07 * height,
+    width: 0.09 * height
   },
   resume: {
     position: 'absolute',
@@ -446,7 +471,7 @@ const stylesFunc = (height, width) => StyleSheet.create({
     flexDirection : "row",
     justifyContent : "space-between",
     alignItems : "center", 
-    backgroundColor : "dodgerblue",
+    backgroundColor : theme?.backgroundColor,
     paddingLeft : 0.075 * height,
   },
   sidePanel : {
@@ -457,12 +482,12 @@ const stylesFunc = (height, width) => StyleSheet.create({
     flexDirection : "column",
     justifyContent : "space-evenly",
     alignItems : "center",
-    backgroundColor : "dodgerblue",
+    backgroundColor : theme?.backgroundColor,
 },
   resultsPanel: {
     height: '27%',
     width: '80%',
-    backgroundColor: 'orange',
+    backgroundColor: theme?.resultsBorderCol,
     marginTop: height * 0.15,
     flexDirection: 'row',
     flexWrap: 'wrap', // Allows items to drop to the next line
@@ -483,7 +508,7 @@ const stylesFunc = (height, width) => StyleSheet.create({
     width: '24%',
     position: 'absolute',
     top: '10%',
-    left: '71%',
+    left: '73.5%',
     flexDirection: 'column',
     borderWidth: 3,
     borderRadius: 10,
@@ -517,19 +542,19 @@ const stylesFunc = (height, width) => StyleSheet.create({
     borderBottomRightRadius: 10,
   },
   resumeButton: {
-    backgroundColor: 'green',
+    backgroundColor: theme?.buttonCol,
     padding: 10,
     borderRadius: 5,
     position: 'absolute',
     height: '8%',
     width: '12%',
     top: '58%',
-    left: '77%',
+    left: '79%',
     justifyContent: 'center',
     alignItems: 'center',
   },
   resumeButtonText: {
-    color: 'white',
+    color: theme?.buttonTextCol,
     fontSize: 14,
     fontWeight: 'bold',
     fontFamily: 'Arial',

@@ -1,10 +1,16 @@
 import Checkbox from 'expo-checkbox'; // Note the lowercase 'b'
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { GameContext } from '../app/GameContext';
+import { carnivalTheme, themeMap } from '../assets/themes';
 
 export default function Benjamin_Quiz_Settings({ navigation }) {
   const { height } = useWindowDimensions();
-  const styles = stylesFunc(height);
+  const { selectedTheme } = useContext(GameContext);
+  const activeTheme = themeMap && themeMap.has(selectedTheme) 
+        ? themeMap.get(selectedTheme) 
+        : carnivalTheme;
+  const styles = stylesFunc(height, activeTheme);
   console.log(useWindowDimensions());
 
   const [isMCG, setIsMCG] = useState(false);
@@ -135,29 +141,29 @@ export default function Benjamin_Quiz_Settings({ navigation }) {
   );
 }
 
-const stylesFunc = (height) => StyleSheet.create({
+const stylesFunc = (height, theme) => StyleSheet.create({
   container: {
     flex: 1,
     gap: 12,
-    backgroundColor: 'dodgerblue',
+    backgroundColor: theme?.backgroundColor,
     alignItems: 'center',
     justifyContent: 'center',
   },
   customText: {
-    color: 'white',
+    color: theme?.textCol,
     fontSize: 24,
     fontWeight: 'bold',
     fontFamily: 'Arial',
   },
   buttonText: {
-    color: 'white',
+    color: theme?.buttonTextCol,
     fontSize: 18,
     fontWeight: 'bold',
     fontFamily: 'Arial',
     textAlign: 'center',
   },
   button: {
-    backgroundColor: 'red',
+    backgroundColor: theme?.buttonCol,
     padding: 0.03 * height,
     borderRadius: 0.03 * height,
     width: 0.4 * height,
@@ -166,14 +172,14 @@ const stylesFunc = (height) => StyleSheet.create({
     alignItems: 'center',
   },
   homeText: {
-    color: 'white', 
+    color: theme?.buttonTextCol, 
     fontSize: 10,
     fontWeight: 'bold',
     fontFamily: 'Arial',
     textAlign: 'center',
   },
   backButton: {
-    backgroundColor: 'red',
+    backgroundColor: theme?.buttonCol,
     borderRadius: 0.01 * height,
     justifyContent: 'center',
     alignItems: 'center',
@@ -186,20 +192,20 @@ const stylesFunc = (height) => StyleSheet.create({
   settingsContainer: {
     height : 0.075 * height,
     width : 0.6 * height,
-    backgroundColor : 'dodgerblue',
+    backgroundColor : theme?.backgroundColor,
     flexDirection : 'row',
     justifyContent: 'space-between',
     },
   leftSettingsContainer: {
     flex : 1,
-    backgroundColor : "dodgerblue", 
+    backgroundColor : theme?.backgroundColor,
     justifyContent : 'center',
     alignItems : 'left',
     borderTopLeftRadius : 0.03 * height,
     borderBottomLeftRadius : 0.03 * height,
   },
   leftSettingsText: {
-    color: 'black',
+    color: theme?.textCol,
     fontSize: 16,
     fontWeight: 'bold',
     fontFamily: 'Arial',
@@ -212,6 +218,6 @@ const stylesFunc = (height) => StyleSheet.create({
   },
   checkboxBorder: {
     borderWidth: 2,
-    borderColor: 'black',
+    borderColor: theme?.borderCol,
   },
 });

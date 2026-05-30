@@ -1,16 +1,9 @@
 // Component file for the Backgammon board view. Takes numCheckers and liftToTop as props.
 
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-
-const checkerACol = 'crimson';
-const checkerBCol = 'green';
-const pointACol = '#ffc919';
-const pointBCol = '#f57231';
-const surfaceCol = '#2a91e0';
-const trayCol = '#1f6ba6';
-const frameCol = '#30a5ff';
-
+import { GameContext } from '../app/GameContext';
+import { carnivalTheme, themeMap } from '../assets/themes';
 
 function boardIDTranslate(x) {
     switch (x) {
@@ -21,17 +14,17 @@ function boardIDTranslate(x) {
     }
 }
 
-const Point = ({ liftValue, countA, countB, inputStyle, isTop, activePlayer, isMulti }) => {
+const Point = ({ liftValue, countA, countB, inputStyle, isTop, activePlayer, isMulti, theme }) => {
   const { height } = useWindowDimensions();
   const heightChecker = height * 0.08;
   const heightPoint = height * 0.384;
-  const styles = stylesFunc(height);
-  console.log("multi", isMulti, "countA", countA, "countB", countB);
+  const styles = stylesFunc(height, theme);
   
   // Determine count
   const isPlayerA = isMulti ? (countA > 0 || countB === 0) : true;
   const count = isMulti ? (countA > 0 ? countA : countB) : countA;
-  const activeCheckerColor = isPlayerA ? checkerACol : checkerBCol;
+  const activeCheckerColor = isPlayerA ? theme?.checkerCols[1] : theme?.checkerCols[0];
+  const activeCheckerBorderColor = isPlayerA ? theme?.checkerBorderCols[1] : theme?.checkerBorderCols[0];
 
   const handlePress = (event) => {
       const { locationX, locationY } = event.nativeEvent;
@@ -55,7 +48,7 @@ const Point = ({ liftValue, countA, countB, inputStyle, isTop, activePlayer, isM
                       onPress={handlePress} onLongPress={handleLongPress}>
         <View style={isTop ? styles.myContainerTop : styles.myContainerBottom}>
             {Array.from({ length: Math.min(5, count) }).map((_, index) => (
-            <View key={index} style={[styles.circle, { backgroundColor: activeCheckerColor }]} pointerEvents="none">
+            <View key={index} style={[styles.circle, { backgroundColor: activeCheckerColor, borderColor: activeCheckerBorderColor, borderWidth: 1 }]} pointerEvents="none">
               <Text style={styles.checkerText}>
                 {((index === 0 && isTop) || (index == 4 && !isTop)) && count > 5 ? count.toString() : ""}
               </Text>
@@ -80,11 +73,15 @@ function getPipCount(numCheckers, isPlayerA = true) {
 
 function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction, isInteractive }) {
   const { height } = useWindowDimensions();
-  const styles = stylesFunc(height);
+  const { soloCheckersCopy, setSoloCheckersCopy, pairCheckersCopy, setPairCheckersCopy, selectedTheme } = useContext(GameContext);
+  const activeTheme = themeMap && themeMap.has(selectedTheme) 
+    ? themeMap.get(selectedTheme) 
+    : carnivalTheme;
+  const styles = stylesFunc(height, activeTheme);
 
-  console.log("checkersA", checkersA, "checkersB", checkersB);
+  //console.log("checkersA", checkersA, "checkersB", checkersB);
   const isMulti = (checkersB[0] != -1);
-  console.log("isMulti", isMulti, checkersB);
+  //console.log("isMulti", isMulti, checkersB);
 
   // Toggle between A and B
   const [selectedPlayer, setSelectedPlayer] = useState('A');
@@ -105,7 +102,7 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                   {isMulti && (
                     <>
                       {Array.from({ length: getNumHomeCheckers(checkersB) }).map((_, index) => (
-                        <View key={index} style={[styles.stackedChecker, { backgroundColor: checkerBCol }]} />
+                        <View key={index} style={[styles.stackedChecker, { backgroundColor: activeTheme?.checkerCols[0], borderColor: activeTheme?.checkerBorderCols[0], borderWidth: 1 }]} />
                       ))}
                       <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
                         {getNumHomeCheckers(checkersB)}
@@ -116,7 +113,7 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                 <View style={styles.SWtray}/>
                 <View style={styles.SEtray}>
                   {Array.from({ length: getNumHomeCheckers(checkersA) }).map((_, index) => (
-                        <View key={index} style={[styles.stackedChecker, { backgroundColor: checkerACol }]} />
+                        <View key={index} style={[styles.stackedChecker, { backgroundColor: activeTheme?.checkerCols[1], borderColor: activeTheme?.checkerBorderCols[1], borderWidth: 1 }]} />
                     ))}
                     <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
                         {getNumHomeCheckers(checkersA)}
@@ -131,7 +128,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointADown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 14, selectedPlayer)}
                           countA={checkersA[13]}
@@ -139,7 +138,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBDown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 15, selectedPlayer)}
                           countA={checkersA[14]}
@@ -147,7 +148,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointADown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 16, selectedPlayer)}
                           countA={checkersA[15]}
@@ -155,7 +158,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBDown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 17, selectedPlayer)}
                           countA={checkersA[16]}
@@ -163,7 +168,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointADown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 18, selectedPlayer)}
                           countA={checkersA[17]}
@@ -171,7 +178,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBDown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 12, selectedPlayer)}
                           countA={checkersA[11]}
@@ -179,7 +188,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 11, selectedPlayer)}
                           countA={checkersA[10]}
@@ -187,7 +198,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointAUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 10, selectedPlayer)}
                           countA={checkersA[9]}
@@ -195,7 +208,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 9, selectedPlayer)}
                           countA={checkersA[8]}
@@ -203,7 +218,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointAUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 8, selectedPlayer)}
                           countA={checkersA[7]}
@@ -211,7 +228,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 7, selectedPlayer)}
                           countA={checkersA[6]}
@@ -219,7 +238,9 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointAUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}
+                          />
                 </View>
                 <View style={styles.bar}>
                   {isMulti ? (<Text style={styles.pipCount}>
@@ -228,10 +249,10 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                   }
                   {isMulti && isInteractive && (
                     <TouchableOpacity 
-                      style={[styles.toggleButton, { borderColor: selectedPlayer === 'A' ? checkerACol : checkerBCol }]}
+                      style={[styles.toggleButton, { borderColor: selectedPlayer === 'A' ? activeTheme?.checkerCols[0] : activeTheme?.checkerCols[1] }]}
                       onPress={() => setSelectedPlayer(prev => prev === 'A' ? 'B' : 'A')}>
                       <Text style={styles.toggleText}>EDIT</Text>
-                      <View style={[styles.indicator, { backgroundColor: selectedPlayer === 'A' ? checkerACol : checkerBCol }]} />
+                      <View style={[styles.indicator, { backgroundColor: selectedPlayer === 'A' ? activeTheme?.checkerCols[0] : activeTheme?.checkerCols[1] }]} />
                     </TouchableOpacity>
                   )}
                   <Text style={styles.pipCount}>
@@ -246,7 +267,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointADown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 20, selectedPlayer)}
                           countA={checkersA[19]}
@@ -254,7 +276,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBDown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 21, selectedPlayer)}
                           countA={checkersA[20]}
@@ -262,7 +285,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointADown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 22, selectedPlayer)}
                           countA={checkersA[21]}
@@ -270,7 +294,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBDown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 23, selectedPlayer)}
                           countA={checkersA[22]}
@@ -278,7 +303,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointADown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 24, selectedPlayer)}
                           countA={checkersA[23]}
@@ -286,7 +312,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBDown}
                           isTop={true}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 6, selectedPlayer)}
                           countA={checkersA[5]}
@@ -294,7 +321,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 5, selectedPlayer)}
                           countA={checkersA[4]}
@@ -302,7 +330,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointAUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 4, selectedPlayer)}
                           countA={checkersA[3]}
@@ -310,7 +339,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 3, selectedPlayer)}
                           countA={checkersA[2]}
@@ -318,7 +348,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointAUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 2, selectedPlayer)}
                           countA={checkersA[1]}
@@ -326,7 +357,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointBUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                         <Point 
                           liftValue={(newValue) => liftToTop(newValue, 1, selectedPlayer)}
                           countA={checkersA[0]}
@@ -334,7 +366,8 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
                           inputStyle={styles.pointAUp}
                           isTop={false}
                           activePlayer={selectedPlayer}
-                          isMulti={isMulti}/>
+                          isMulti={isMulti}
+                          theme={activeTheme}/>
                 </View>
             </View>
         </View>
@@ -342,7 +375,7 @@ function BackgammonBoard({ checkersA, checkersB, liftToTop, onCallParentFunction
 }
 
 
-const stylesFunc = (height) => StyleSheet.create({
+const stylesFunc = (height, theme) => StyleSheet.create({
   point : {
     width: '100%',
     aspectRatio: 1,
@@ -350,7 +383,7 @@ const stylesFunc = (height) => StyleSheet.create({
   container: {
     flex: 1,
     gap: 100,
-    backgroundColor: 'dodgerblue',
+    backgroundColor: theme?.backgroundColor,
     alignItems: 'flex-start',
     justifyContent: 'center',
     paddingLeft: 50,
@@ -375,7 +408,7 @@ const stylesFunc = (height) => StyleSheet.create({
   board : {
     height: '90%',
     aspectRatio: 1.376,
-    backgroundColor: 'red',
+    backgroundColor: theme?.frameCol,
     flexDirection: 'row',
     justifyContent: 'center',
     gap: height * 0.003,
@@ -384,7 +417,7 @@ const stylesFunc = (height) => StyleSheet.create({
   surface: {
     height: '99%',
     width: '40%',
-    backgroundColor: '#2a91e0', // Example color for the surface
+    backgroundColor: theme?.surfaceCol,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-evenly',
@@ -393,7 +426,7 @@ const stylesFunc = (height) => StyleSheet.create({
   bar: {
     height: '100%',
     width: '6%',
-    backgroundColor: '#cc0000',
+    backgroundColor: theme?.barCol,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -404,7 +437,7 @@ const stylesFunc = (height) => StyleSheet.create({
     borderWidth: 2,
     borderRadius: 5,
     alignItems: 'center',
-    backgroundColor: '#222',
+    backgroundColor: theme?.toggleButtonCol,
   },
   toggleText: {
     color: 'white',
@@ -426,7 +459,7 @@ const stylesFunc = (height) => StyleSheet.create({
     borderTopWidth: height * 0.384, // Adjust size as needed
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#ffc919', // Color of the triangle
+    borderTopColor: theme?.pointCols[0], // Color of the triangle
   },
   pointBDown: {
     width: 0,
@@ -438,7 +471,7 @@ const stylesFunc = (height) => StyleSheet.create({
     borderTopWidth: height * 0.384, // Adjust size as needed
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#f57231', // Color of the triangle
+    borderTopColor: theme?.pointCols[1], // Color of the triangle
   },
   pointAUp: {
     width: 0,
@@ -450,7 +483,7 @@ const stylesFunc = (height) => StyleSheet.create({
     borderBottomWidth: height * 0.384, // Adjust size as needed
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: '#ffc919', // Color of the triangle
+    borderBottomColor: theme?.pointCols[0], // Color of the triangle
   },
   pointBUp: {
     width: 0,
@@ -462,13 +495,13 @@ const stylesFunc = (height) => StyleSheet.create({
     borderBottomWidth: height * 0.384, // Adjust size as needed
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: '#f57231', // Color of the triangle
+    borderBottomColor: theme?.pointCols[1], // Color of the triangle
   },
   NWtray: {
     position: 'absolute',
     width: 0.074 * height,
     height: 0.384 * height,
-    backgroundColor: trayCol,
+    backgroundColor: theme?.trayCol,
     top: 0.0045 * height,
     left: 0.0045 * height,
   },
@@ -476,7 +509,7 @@ const stylesFunc = (height) => StyleSheet.create({
     position: 'absolute',
     width: 0.074 * height,
     height: 0.384 * height,
-    backgroundColor: trayCol,
+    backgroundColor: theme?.trayCol,
     bottom: 0.0045 * height,
     left: 0.0045 * height,
     },
@@ -484,7 +517,7 @@ const stylesFunc = (height) => StyleSheet.create({
     position: 'absolute',
     width: 0.074 * height,
     height: 0.384 * height,
-    backgroundColor: trayCol,
+    backgroundColor: theme?.trayCol,
     top: 0.0045 * height,
     right: 0.0045 * height,
     alignItems: 'center',
@@ -493,7 +526,7 @@ const stylesFunc = (height) => StyleSheet.create({
     position: 'absolute',
     width: 0.074 * height,
     height: 0.384 * height,
-    backgroundColor: trayCol,
+    backgroundColor: theme?.trayCol,
     bottom: 0.0045 * height,
     right: 0.0045 * height,
     flexDirection: 'column-reverse',
@@ -503,18 +536,16 @@ const stylesFunc = (height) => StyleSheet.create({
   stackedChecker: {
     width: '90%',
     height: '5%',
-    backgroundColor: "crimson",
+    backgroundColor: theme?.checkerCols[0],
     borderWidth: 1,
   }, // Example color for the stacked checker}
   circle: {
         width: height * 0.08, // Adjust size as needed
         aspectRatio: 1,
-        borderRadius: height * 0.04, // Half of the width/height
-        backgroundColor: 'crimson', // Example color for the circle
-        borderColor: 'black',
         borderWidth: 1,
         justifyContent: "center",
         alignItems: "center",
+        borderRadius: height * 0.04, // Half of the width/height
   },
   myContainerBottom: {
     flex: 1,

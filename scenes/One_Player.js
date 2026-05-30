@@ -1,13 +1,18 @@
 // Component for the Setup Position screen of the app. Takes navigation as a prop.
 
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { GameContext } from '../app/GameContext';
 import positions from '../assets/epc_positions.json';
+import { carnivalTheme, themeMap } from '../assets/themes';
 import BackgammonBoard from "../views/BackgammonBoard";
-
 
 export default function One_Player({ navigation }) {
   console.log("Hello");
+  const { soloCheckersCopy, setSoloCheckersCopy, pairCheckersCopy, setPairCheckersCopy, selectedTheme } = useContext(GameContext);
+  const activeTheme = themeMap && themeMap.has(selectedTheme) 
+    ? themeMap.get(selectedTheme) 
+    : carnivalTheme;
   const [checkersA, setcheckersA] = useState(
       [0, 0, 0, 0, 0, 0,
        0, 0, 0, 0, 0, 0,
@@ -28,6 +33,10 @@ export default function One_Player({ navigation }) {
   const [BestimateText, setBestimateText] = useState("");
   const [DistributionText, setDistributionText] = useState("");
   const [FastimateText, setFastimateText] = useState("");
+
+  const pastePosition = () => {
+    setcheckersA([...soloCheckersCopy]);
+  };
 
   function getNumHomeCheckers(arr) {
     return 15 - arr.reduce((acc, item) => acc + item, 0);
@@ -55,7 +64,7 @@ export default function One_Player({ navigation }) {
     }
 
   const { height } = useWindowDimensions();
-  const styles = stylesFunc(height);
+  const styles = stylesFunc(height, activeTheme);
 
   const modifyTexts = (boardStr, isValid) => {
     console.log("BOARD", positions[boardStr], boardStr, isValid);
@@ -131,35 +140,30 @@ export default function One_Player({ navigation }) {
                 { "Home" }
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.pasteButton} onPress={() => pastePosition()}>
+            <Text style={styles.homeText}>
+                { "Paste" }
+            </Text>
+          </TouchableOpacity>
         </View>
     )
 }
 
-const stylesFunc = (height) => StyleSheet.create({
+const stylesFunc = (height, theme) => StyleSheet.create({
       circle: {
         width: '%100',
         aspectRatio: 1,
         borderRadius: '%50', // Half of the width/height
         backgroundColor: 'blue',
       },
-      myContainer: {
-        width: '50%',
-        height: '50%', 
-        backgroundColor: 'red',
-        alignSelf : "center"
-      },
       statsContainer: {
         height : 0.075 * height,
         width : 0.6 * height,
-        backgroundColor : 'dodgerblue',
+        backgroundColor : theme?.backgroundColor,
         flexDirection : 'row',
       },
-      insideStatsContainer : {
-        backgroundColor : "white",
-        flex : 1,
-      },
       customText: {
-        color: 'white',
+        color: theme?.textCol,
         fontSize: 24,
         fontWeight: 'bold',
         fontFamily: 'Arial',
@@ -201,7 +205,7 @@ const stylesFunc = (height) => StyleSheet.create({
         flexDirection : "row",
         justifyContent : "space-between",
         alignItems : "center", 
-        backgroundColor : "dodgerblue",
+        backgroundColor : theme?.backgroundColor,
         paddingLeft : 0.075 * height,
       },
       sidePanel : {
@@ -211,32 +215,24 @@ const stylesFunc = (height) => StyleSheet.create({
         flexDirection : "column",
         justifyContent : "space-evenly",
         alignItems : "center",
-        backgroundColor : "dodgerblue",
+        backgroundColor : theme?.backgroundColor,
     },
-      evalButton : {
-        height : 0.1 * height,
-        width : 0.3 * height,
-        backgroundColor : 'blue',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius : 0.03 * height
-      },
       homeText: {
-        color: 'white',
+        color: theme?.buttonTextCol,
         fontSize: 10,
         fontWeight: 'bold',
         fontFamily: 'Arial',
         textAlign: 'center',
       },
       resetText: {
-          color: 'white',
+          color: theme?.buttonTextCol,
           fontSize: 18,
           fontWeight: 'bold',
           fontFamily: 'Arial',
           borderRadius : 0.08 * height,
       },
       backButton: {
-        backgroundColor: 'red',
+        backgroundColor: theme?.buttonCol,
         borderRadius: 0.01 * height,
         justifyContent: 'center',
         alignItems: 'center',
@@ -249,10 +245,21 @@ const stylesFunc = (height) => StyleSheet.create({
       resetButton: {
           height : 0.075 * height,
           width : 0.6 * height,
-          backgroundColor : 'red',
+          backgroundColor : theme?.buttonCol,
           flexDirection : 'row',
           justifyContent: 'center',
           textAlign: 'center',
           borderRadius: 0.02 * height,
-      }
+      },
+      pasteButton: {
+        backgroundColor: theme?.buttonCol,
+        borderRadius: 0.01 * height,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'absolute',
+        top: 0.20 * height,
+        left: 0.055 * height,
+        height: 0.07 * height,
+        width: 0.09 * height
+      },
     });

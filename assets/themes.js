@@ -1,0 +1,42 @@
+// Themes.js
+
+export const jungleTheme = {
+  backgroundColor: 'black',
+  surfaceCol: '#777777',
+  frameCol: 'brown',                                
+  barCol: 'brown', 
+  trayCol: 'brown',
+  checkerCols: ['white', 'black'],
+  checkerBorderCols: ['black', '#cccccc'],
+  pointCols: ['green', 'lime'],
+  toggleButtonCol: '#aaaaaa',
+  buttonCol: 'yellow',
+  borderCol: '#cccccc',
+  resultsBorderCol: 'orange',
+  textCol: 'white',
+  buttonTextCol: '#333333',
+};
+
+export const carnivalTheme = {
+  backgroundColor: 'dodgerblue',
+  surfaceCol: '#2a91e0',
+  frameCol: 'red',
+  barCol: '#cc0000',
+  trayCol: '#1f6ba6',
+  checkerCols: ['crimson', 'green'],
+  checkerBorderCols: ['black', 'black'],
+  pointCols: ['#ffc919', '#ff6f00'],
+  buttonCol: 'red',
+  toggleButtonCol: 'black',
+  borderCol: 'black',
+  resultsBorderCol: 'orange',
+  textCol: 'white',
+  buttonTextCol: 'white',
+};
+
+export const themes = ['Jungle', 'Carnival'];
+
+// Build and export the stable theme map
+export const themeMap = new Map();
+themeMap.set('Jungle', jungleTheme);
+themeMap.set('Carnival', carnivalTheme);
